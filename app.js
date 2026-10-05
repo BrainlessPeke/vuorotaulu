@@ -49,6 +49,12 @@
     return (short ? short + " " : "") + p[2] + "." + p[1] + ".";
   }
 
+  function lab(s) {
+    if (s === "Md,s Check") return "TARKISTA";
+    if (s === "Not Allowed") return "EI SALLITTU";
+    return s || "";
+  }
+
   function restClass(s) {
     if (s === "ok") return "cell-ok";
     if (s === "Md,s Check") return "cell-md";
@@ -73,7 +79,7 @@
             text:
               p.name +
               ": " +
-              d.restBefore +
+              lab(d.restBefore) +
               " " +
               label +
               (lepo ? " (lepo " + lepo + ")" : ""),
@@ -142,7 +148,7 @@
         const restCells = people
           .map((p) => {
             const s = p.days[i].restBefore || "";
-            return '<td class="' + restClass(s) + '">' + s + "</td>";
+            return '<td class="' + restClass(s) + '">' + lab(s) + "</td>";
           })
           .join("");
         const hrsCells = people.map((p) => "<td>" + fmt(p.days[i].hrs) + "</td>").join("");
@@ -164,10 +170,10 @@
     $("overviewTotals").innerHTML =
       '<div class="stat"><b>' +
       tot.notAllowed +
-      "</b><span>Not Allowed yht.</span></div>" +
+      "</b><span>EI SALLITTU yht.</span></div>" +
       '<div class="stat"><b>' +
       tot.mdCheck +
-      "</b><span>Md,s Check yht.</span></div>" +
+      "</b><span>TARKISTA yht.</span></div>" +
       '<div class="stat"><b>' +
       people.reduce((a, p) => a + p.shiftCount, 0) +
       "</b><span>Vuoroja yhteensä</span></div>" +
@@ -208,7 +214,7 @@
           '<td class="' +
           restClass(d.restAfter) +
           '">' +
-          (d.restAfter || "") +
+          lab(d.restAfter) +
           "</td>" +
           "<td>" +
           fmt(d.hrs) +
@@ -242,7 +248,7 @@
       .map((d) => {
         const hasShift = d.start != null;
         const restLabel = d.restAfter
-          ? d.restAfter +
+          ? lab(d.restAfter) +
             (d.restAfterMin != null ? " · lepo " + fmt(d.restAfterMin) : "")
           : "";
         return (
