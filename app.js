@@ -110,6 +110,37 @@
       "</ul>";
   }
 
+  function personProblems(p) {
+    const problems = [];
+    p.days.forEach((d) => {
+      if (d.restBefore === "Not Allowed" || d.restBefore === "Md,s Check") {
+        const label = (WD_SHORT[d.weekday] || "") + " " + dateFi(d.date).replace(/\.\d{4}$/, ".");
+        const lepo = d.restBeforeMin != null ? fmt(d.restBeforeMin) : "";
+        problems.push({
+          kind: d.restBefore === "Not Allowed" ? "bad" : "md",
+          text:
+            lab(d.restBefore) +
+            " " +
+            label +
+            (lepo ? " (" + lepo + ")" : ""),
+        });
+      }
+      if (d.check != null && d.check > 0) {
+        problems.push({
+          kind: "md",
+          text: "Tarkista erotus " + dateFi(d.date).replace(/\.\d{4}$/, ".") + " = " + fmt(d.check),
+        });
+      }
+    });
+    return problems;
+  }
+
+  function personStatus(problems) {
+    if (problems.some((x) => x.kind === "bad")) return "bad";
+    if (problems.length) return "md";
+    return "ok";
+  }
+
   function renderOverview() {
     const people = state.people;
     $("periodMeta").textContent =
@@ -117,72 +148,85 @@
       "Alku " +
       dateFi(state.startDate);
 
-    const tabs = $("personTabs");
-    tabs.innerHTML = people
-      .map(
-        (p) =>
-          '<button type="button" data-id="' +
-          p.id +
-          '">' +
-          p.name +
-          " (" +
-          p.shiftCount +
-          ")</button>"
-      )
-      .join("");
-    tabs.querySelectorAll("button").forEach((btn) => {
+    let nBad = 0,
+      nMd = 0,
+      nOk = 0;
+    const cards = people.map((p) => {
+      const problems = personProblems(p);
+      const status = personStatus(problems);
+      if (status === "bad") nBad++;
+      else if (status === "md") nMd++;
+      else nOk++;
+
+      const sum = (key) =>
+        p.days.reduce((a, d) => a + (d[key] != null ? d[key] : 0), 0);
+      const hrs = sum("hrs");
+      const me = sum("me");
+      const company = sum("company");
+      const badge =
+        status === "bad"
+          ? '<span class="pill bad">EI SALLITTU</span>'
+          : status === "md"
+            ? '<span class="pill md">TARKISTA</span>'
+            : '<span class="pill ok">OK</span>';
+
+      const problemList = problems.length
+        ? '<ul class="card-problems">' +
+          problems
+            .map(
+              (pr) =>
+                '<li class="prob-' + pr.kind + '">' + pr.text + "</li>"
+            )
+            .join("") +
+          "</ul>"
+        : '<p class="card-ok-line">Ei huomautuksia</p>';
+
+      return (
+        '<button type="button" class="person-card status-' +
+        status +
+        '" data-id="' +
+        p.id +
+        '">' +
+        '<div class="person-card-top">' +
+        "<div><h3>" +
+        p.name +
+        "</h3>" +
+        '<p class="card-meta">' +
+        p.shiftCount +
+        " vuoroa</p></div>" +
+        badge +
+        "</div>" +
+        '<div class="card-hours">' +
+        "<div><span>Tunnit</span><b>" +
+        fmt(hrs) +
+        "</b></div>" +
+        "<div><span>LM</span><b>" +
+        fmt(me) +
+        "</b></div>" +
+        "<div><span>Yritys</span><b>" +
+        fmt(company) +
+        "</b></div>" +
+        "</div>" +
+        problemList +
+        '<span class="card-open">Avaa detaljit →</span>' +
+        "</button>"
+      );
+    });
+
+    $("personCards").innerHTML = cards.join("");
+    $("personCards").querySelectorAll(".person-card").forEach((btn) => {
       btn.addEventListener("click", () => openDetail(+btn.dataset.id));
     });
 
-    const thead = $("overviewTable").querySelector("thead");
-    const tbody = $("overviewTable").querySelector("tbody");
-    thead.innerHTML =
-      "<tr><th>Päivä</th><th>Vko</th>" +
-      people.map((p) => "<th>" + p.name + "<br/><span style=\"font-weight:400\">Vuorojen väli</span></th>").join("") +
-      people.map((p) => "<th>Tunnit<br/>" + p.name + "</th>").join("") +
-      "</tr>";
-
-    tbody.innerHTML = state.dates
-      .map((dk, i) => {
-        const wd = WD_SHORT[people[0].days[i].weekday] || "";
-        const dateLabel = dateFi(dk);
-        const restCells = people
-          .map((p) => {
-            const s = p.days[i].restBefore || "";
-            return '<td class="' + restClass(s) + '">' + lab(s) + "</td>";
-          })
-          .join("");
-        const hrsCells = people.map((p) => "<td>" + fmt(p.days[i].hrs) + "</td>").join("");
-        return (
-          "<tr><td>" +
-          dateLabel +
-          "</td><td>" +
-          wd +
-          "</td>" +
-          restCells +
-          hrsCells +
-          "</tr>"
-        );
-      })
-      .join("");
-
-    // Totals from the same restBefore source as grid + alerts
-    const tot = summary.flags;
-    $("overviewTotals").innerHTML =
-      '<div class="stat"><b>' +
-      tot.notAllowed +
-      "</b><span>EI SALLITTU yht.</span></div>" +
-      '<div class="stat"><b>' +
-      tot.mdCheck +
-      "</b><span>TARKISTA yht.</span></div>" +
-      '<div class="stat"><b>' +
+    const bits = [];
+    if (nBad) bits.push(nBad + " EI SALLITTU");
+    if (nMd) bits.push(nMd + " TARKISTA");
+    if (nOk) bits.push(nOk + " OK");
+    $("overviewSummary").textContent =
       people.reduce((a, p) => a + p.shiftCount, 0) +
-      "</b><span>Vuoroja yhteensä</span></div>" +
-      '<div class="stat"><b>' +
-      tot.checkMismatch +
-      "</b><span>Tarkista erotus</span></div>";
+      " vuoroa · " +
+      bits.join(" · ");
 
-    renderAlerts($("alerts"), state, null);
     show("overview");
   }
 
