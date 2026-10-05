@@ -1,4 +1,4 @@
-const CACHE = "vuorotarkastus-v16";
+const CACHE = "vuorotarkastus-v17";
 const ASSETS = [
   "./",
   "./index.html",

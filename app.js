@@ -208,7 +208,7 @@
         "</b></div>" +
         "</div>" +
         problemList +
-        '<span class="card-open">Avaa detaljit →</span>' +
+        '<span class="card-open">Avaa vuorotaulu →</span>' +
         "</button>"
       );
     });
