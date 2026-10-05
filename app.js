@@ -82,7 +82,7 @@
               lab(d.restBefore) +
               " " +
               label +
-              (lepo ? " (lepo " + lepo + ")" : ""),
+              (lepo ? " (vuorojen väli " + lepo + ")" : ""),
           });
         }
         if (d.check != null && d.check > 0) {
@@ -137,7 +137,7 @@
     const tbody = $("overviewTable").querySelector("tbody");
     thead.innerHTML =
       "<tr><th>Päivä</th><th>Vko</th>" +
-      people.map((p) => "<th>" + p.name + "<br/><span style=\"font-weight:400\">Lepo</span></th>").join("") +
+      people.map((p) => "<th>" + p.name + "<br/><span style=\"font-weight:400\">Vuorojen väli</span></th>").join("") +
       people.map((p) => "<th>Tunnit<br/>" + p.name + "</th>").join("") +
       "</tr>";
 
@@ -249,7 +249,7 @@
         const hasShift = d.start != null;
         const restLabel = d.restAfter
           ? lab(d.restAfter) +
-            (d.restAfterMin != null ? " · lepo " + fmt(d.restAfterMin) : "")
+            (d.restAfterMin != null ? " · " + fmt(d.restAfterMin) : "")
           : "";
         return (
           '<article class="day-card' +
@@ -276,7 +276,7 @@
               "<div><span>Yö</span><b>" +
               fmt(d.night) +
               "</b></div>" +
-              "<div><span>Me</span><b>" +
+              "<div><span>LM</span><b>" +
               fmt(d.me) +
               "</b></div>" +
               "<div><span>Yritys</span><b>" +
@@ -293,7 +293,7 @@
               "</b></div>" +
               '<div class="' +
               restClass(d.restAfter) +
-              '"><span>Lepo→</span><b>' +
+              '"><span>Vuorojen väli →</span><b>' +
               (restLabel || "—") +
               "</b></div>" +
               "</div>"
@@ -319,7 +319,7 @@
       "</b><span>100 %</span></div>" +
       '<div class="stat"><b>' +
       fmt(sum("me")) +
-      "</b><span>Me yht.</span></div>" +
+      "</b><span>LM yht.</span></div>" +
       '<div class="stat"><b>' +
       fmt(sum("company")) +
       "</b><span>Yritys yht.</span></div>";
