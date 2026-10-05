@@ -89,7 +89,7 @@
         if (d.check != null && d.check > 0) {
           items.push({
             bad: false,
-            text: p.name + ": Check-ero " + dateFi(d.date) + " = " + fmt(d.check),
+            text: p.name + ": TARKISTA EROTUS " + dateFi(d.date) + " = " + fmt(d.check),
           });
         }
       });
@@ -180,7 +180,7 @@
       "</b><span>Vuoroja yhteensä</span></div>" +
       '<div class="stat"><b>' +
       tot.checkMismatch +
-      "</b><span>Check-erot</span></div>";
+      "</b><span>TARKISTA EROTUS</span></div>";
 
     renderAlerts($("alerts"), state, null);
     show("overview");
