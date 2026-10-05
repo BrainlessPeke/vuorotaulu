@@ -148,6 +148,9 @@
       "Alku " +
       dateFi(state.startDate);
 
+    const titleEl = $("overviewTitle");
+    if (titleEl) titleEl.textContent = "Kaikki " + people.length + " henkilöä";
+
     let nBad = 0,
       nMd = 0,
       nOk = 0;

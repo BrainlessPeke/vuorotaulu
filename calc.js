@@ -289,7 +289,7 @@
   }
 
   /**
-   * Compute one person's 21 days.
+   * Compute one person's days (any length).
    * shifts[i] = {start,end}|null, company[i]=minutes|null, dates[i]=Date
    */
   function computePerson(dates, shifts, companyHours, holidayMap) {
@@ -409,18 +409,125 @@
       return c.v !== undefined ? c.v : null;
     }
 
-    const startDate = toDate(raw("B4"));
-    if (!startDate) throw new Error("Jakso-lomakkeelta ei löytynyt aloituspäivää (B4).");
-
-    const names = [];
-    const nameAddrs = ["C2", "D2", "E2", "F2", "G2"];
-    for (let p = 0; p < 5; p++) {
-      const n = raw(nameAddrs[p]);
-      names.push(n && String(n).trim() ? String(n).trim() : "Hlö " + (p + 1));
+    function hasFormula(addr) {
+      const c = sheet[addr];
+      return !!(c && c.f);
     }
 
+    /** 0-based column index → Excel letter (0=A) */
+    function colLetter(idx0) {
+      let n = idx0 + 1;
+      let s = "";
+      while (n > 0) {
+        const m = (n - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    }
+
+    function sheetMaxCol0() {
+      if (sheet["!ref"] && typeof XLSX !== "undefined" && XLSX.utils && XLSX.utils.decode_range) {
+        return XLSX.utils.decode_range(sheet["!ref"]).e.c;
+      }
+      let max = 2;
+      Object.keys(sheet).forEach(function (k) {
+        if (k.charAt(0) === "!") return;
+        const m = k.match(/^([A-Z]+)/);
+        if (!m) return;
+        let n = 0;
+        const letters = m[1];
+        for (let i = 0; i < letters.length; i++) n = n * 26 + (letters.charCodeAt(i) - 64);
+        if (n - 1 > max) max = n - 1;
+      });
+      return max;
+    }
+
+    const weekdaySet = {};
+    WEEKDAYS_FI.forEach(function (w) {
+      weekdaySet[w] = true;
+    });
+
+    // Layout detection:
+    //  Modern: B2=Jakso, names row2, weekday row3, date row4, hours row5
+    //  Older:  B3=Jakso, names row3, weekday row4, date row5, hours row6
+    let nameRow, weekRow0, dateRow0, hoursRow0, periodAddr;
+    if (toDate(raw("B4"))) {
+      nameRow = 2;
+      weekRow0 = 3;
+      dateRow0 = 4;
+      hoursRow0 = 5;
+      periodAddr = "B2";
+    } else if (toDate(raw("B5"))) {
+      nameRow = 3;
+      weekRow0 = 4;
+      dateRow0 = 5;
+      hoursRow0 = 6;
+      periodAddr = "B3";
+    } else if (toDate(raw("B4")) || toDate(raw("B3"))) {
+      // fallback attempt
+      nameRow = 2;
+      weekRow0 = 3;
+      dateRow0 = 4;
+      hoursRow0 = 5;
+      periodAddr = "B2";
+    } else {
+      throw new Error("Jakso-lomakkeelta ei löytynyt aloituspäivää (B4/B5).");
+    }
+
+    const startDate = toDate(raw("B" + dateRow0));
+    if (!startDate) throw new Error("Jakso-lomakkeelta ei löytynyt aloituspäivää.");
+
+    const MAX_DAYS = 62;
+    let dayCount = 0;
+    for (let i = 0; i < MAX_DAYS; i++) {
+      const dateRow = dateRow0 + 3 * i;
+      const weekRow = weekRow0 + 3 * i;
+      const bDate = raw("B" + dateRow);
+      const bWeek = raw("B" + weekRow);
+      if (bWeek != null && String(bWeek).trim() === "Tunnit") break;
+      if (bDate != null && String(bDate).trim() === "Tunnit") break;
+      if (toDate(bDate)) {
+        dayCount++;
+        continue;
+      }
+      if (bWeek != null && weekdaySet[String(bWeek).trim()]) {
+        dayCount++;
+        continue;
+      }
+      break;
+    }
+    if (dayCount < 1) dayCount = 1;
+
     const dates = [];
-    for (let i = 0; i < 21; i++) dates.push(addDays(startDate, i));
+    for (let i = 0; i < dayCount; i++) dates.push(addDays(startDate, i));
+
+    function isHelperName(n) {
+      if (n == null) return false;
+      const s = String(n).trim().toLowerCase();
+      if (!s) return false;
+      if (/käytössä|ukkoja|countif|yhteensä|tunti/.test(s)) return true;
+      if (/^jakso\b/i.test(s)) return true;
+      return false;
+    }
+
+    /** Person = column with a real name in the name row. Nameless shift columns are ignored. */
+    function colHasPersonData(letter) {
+      const n = raw(letter + nameRow);
+      if (n == null || String(n).trim() === "") return false;
+      if (isHelperName(n)) return false;
+      return true;
+    }
+
+    const maxCol0 = Math.min(sheetMaxCol0(), 2 + 45);
+    const personCols = [];
+    for (let c = 2; c <= maxCol0; c++) {
+      const letter = colLetter(c);
+      if (colHasPersonData(letter)) personCols.push(letter);
+    }
+    if (!personCols.length) {
+      throw new Error("Jakso-lomakkeelta ei löytynyt yhtään henkilöä (sarakkeet C…).");
+    }
 
     const y0 = startDate.getFullYear();
     const holidayMap = Object.assign(
@@ -431,16 +538,19 @@
     );
 
     const people = [];
-    const cols = ["C", "D", "E", "F", "G"];
-    for (let p = 0; p < 5; p++) {
-      const letter = cols[p];
+    for (let p = 0; p < personCols.length; p++) {
+      const letter = personCols[p];
+      const rawName = raw(letter + nameRow);
+      const name = String(rawName).trim();
       const shifts = [];
       const company = [];
-      for (let i = 0; i < 21; i++) {
-        const formShiftRow = 4 + 3 * i;
-        const formHoursRow = 5 + 3 * i;
-        const rawShift = raw(letter + formShiftRow);
-        const sh = parseShift(rawShift);
+      for (let i = 0; i < dayCount; i++) {
+        const formShiftRow = dateRow0 + 3 * i;
+        const formHoursRow = hoursRow0 + 3 * i;
+        let sh = null;
+        if (!hasFormula(letter + formShiftRow)) {
+          sh = parseShift(raw(letter + formShiftRow));
+        }
         shifts.push(sh);
         let hrs = null;
         if (sh) hrs = parseCompanyHours(raw(letter + formHoursRow));
@@ -449,17 +559,22 @@
       const days = computePerson(dates, shifts, company, holidayMap);
       people.push({
         id: p + 1,
-        name: names[p],
+        name: name,
+        col: letter,
         days,
-        shiftCount: days.filter((d) => d.start != null).length,
+        shiftCount: days.filter(function (d) {
+          return d.start != null;
+        }).length,
       });
     }
 
-    const periodCell = raw("B2");
+    const periodCell = raw(periodAddr);
     return {
       periodLabel: periodCell ? String(periodCell) : "",
       startDate: dateKey(startDate),
       dates: dates.map(dateKey),
+      dayCount: dayCount,
+      layout: { nameRow: nameRow, weekRow0: weekRow0, dateRow0: dateRow0, hoursRow0: hoursRow0 },
       people,
       holidayMap,
     };
