@@ -289,7 +289,7 @@
               "<div><span>100%</span><b>" +
               fmt(d.b100) +
               "</b></div>" +
-              "<div><span>Check</span><b>" +
+              "<div><span>Erotus</span><b>" +
               fmt(d.check) +
               "</b></div>" +
               '<div class="' +
