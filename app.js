@@ -52,6 +52,7 @@
   function lab(s) {
     if (s === "Md,s Check") return "TARKISTA";
     if (s === "Not Allowed") return "EI SALLITTU";
+    if (s === "ok") return "OK";
     return s || "";
   }
 
