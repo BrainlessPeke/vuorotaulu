@@ -1,5 +1,7 @@
 # Vuorotaulun tarkastus (PWA)
 
+> **Sovellus on siirtynyt: https://nrvuorotaulu.github.io/** (lähdekoodi: https://github.com/NRvuorotaulu/nrvuorotaulu.github.io). Tämä repo on vain uudelleenohjaus.
+
 Paikallinen, asennettava web-sovellus junakuljettajan jakso-lomakkeen tarkistukseen.
 
 ## Käyttö
