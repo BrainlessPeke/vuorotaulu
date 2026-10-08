@@ -1,4 +1,4 @@
-// Sovellus on siirtynyt osoitteeseen https://nrvuorotaulu.github.io/
+// Sovellus on siirtynyt osoitteeseen https://nrtyokalut.github.io/
 // Tämä service worker poistaa itsensä ja vanhat välimuistit ja lataa avoimet ikkunat uudelleen,
 // jolloin ne saavat uudelleenohjaussivun.
 self.addEventListener("install", () => self.skipWaiting());
